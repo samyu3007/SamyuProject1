@@ -5,7 +5,7 @@ import { demoAuthAdapter } from './services/auth'
 import './App.css'
 import './campusbite.css'
 
-type Page = 'menu' | 'cart' | 'orders' | 'admin' | 'offers' | 'about'
+type Page = 'menu' | 'cart' | 'orders' | 'admin' | 'offers' | 'about' | 'student-login' | 'staff-login'
 type CartLine = { itemId: string; quantity: number; extras: string[] }
 const money = (amount: number) => `₹${amount.toFixed(0)}`
 const imageFallback = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=85'
@@ -22,7 +22,7 @@ export default function CampusBite() {
   const [slots, setSlots] = useStoredState<typeof pickupSlots>('campusbite-slots', pickupSlots)
   const [cart, setCart] = useStoredState<CartLine[]>('campusbite-cart', [])
   const [user, setUser] = useStoredState<User | null>('campusbite-user', null)
-  const [page, setPage] = useState<Page>('menu')
+  const [page, setPage] = useState<Page>('student-login')
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState('Popular')
@@ -79,8 +79,8 @@ export default function CampusBite() {
     <header className="topbar">
       <button className="brand" onClick={() => setPage('menu')} aria-label="CampusBite home"><span className="brand-mark"><UtensilsCrossed size={20} /></span><span>campus<span className="brand-accent">bite</span><small>THE CAMPUS CANTEEN</small></span></button>
       <button className="mobile-menu" onClick={() => setMobileNav(!mobileNav)} aria-label="Toggle navigation">{mobileNav ? <X /> : <SlidersHorizontal />}</button>
-      <nav className={mobileNav ? 'nav-links nav-open' : 'nav-links'} aria-label="Main navigation"><button className={page === 'menu' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('menu'); setMobileNav(false) }}>Menu</button><button className={page === 'orders' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('orders'); setMobileNav(false) }}>My orders</button><button className={page === 'offers' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('offers'); setMobileNav(false) }}>Offers <span className="offer-dot" /></button><button className={page === 'about' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('about'); setMobileNav(false) }}>About</button>{user?.role === 'admin' && <button className={page === 'admin' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('admin'); setMobileNav(false) }}>Staff workspace</button>}</nav>
-      <div className="top-actions"><button className="icon-button notification-button" title="Notifications" onClick={() => notify('You are all caught up')}><Bell size={19} /><i /></button><button className="profile-button" onClick={() => user ? (user.role === 'admin' ? setPage('admin') : setAuthOpen(true)) : setAuthOpen(true)}><span className="avatar">{user ? user.name.charAt(0) : 'S'}</span><span className="profile-label">{user?.name.split(' ')[0] ?? 'Sign in'}</span><ChevronDown size={15} /></button><button className="cart-button" title="Open cart" onClick={() => setPage('cart')}><ShoppingCart size={19} /><span>Bag</span><b>{cartCount}</b></button></div>
+      <nav className={mobileNav ? 'nav-links nav-open' : 'nav-links'} aria-label="Main navigation"><button className={page === 'menu' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('menu'); setMobileNav(false) }}>Menu</button><button className={page === 'orders' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('orders'); setMobileNav(false) }}>My orders</button><button className={page === 'offers' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('offers'); setMobileNav(false) }}>Offers <span className="offer-dot" /></button><button className={page === 'about' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('about'); setMobileNav(false) }}>About</button>{user?.role === 'admin' ? <button className={page === 'admin' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('admin'); setMobileNav(false) }}>Staff workspace</button> : <button className={page === 'staff-login' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('staff-login'); setMobileNav(false) }}>Staff sign in</button>}</nav>
+      <div className="top-actions"><button className="icon-button notification-button" title="Notifications" onClick={() => notify('You are all caught up')}><Bell size={19} /><i /></button><button className="profile-button" onClick={() => user?.role === 'admin' ? setPage('admin') : setPage('student-login')}><span className="avatar">{user ? user.name.charAt(0) : 'S'}</span><span className="profile-label">{user?.name.split(' ')[0] ?? 'Student sign in'}</span><ChevronDown size={15} /></button><button className="cart-button" title="Open cart" onClick={() => setPage('cart')}><ShoppingCart size={19} /><span>Bag</span><b>{cartCount}</b></button></div>
     </header>
     <main>
       {page === 'menu' && <>
@@ -95,6 +95,7 @@ export default function CampusBite() {
       {page === 'admin' && <AdminPage items={items} orders={orders} slots={slots} setSlots={setSlots} setItems={setItems} setOrders={setOrders} notify={notify} />}
       {page === 'offers' && <OffersPage onMenu={() => { setPage('menu'); setMaxPrice(250) }} />}
       {page === 'about' && <AboutPage onMenu={() => setPage('menu')} />}
+      {(page === 'student-login' || page === 'staff-login') && <LoginPage role={page === 'staff-login' ? 'admin' : 'student'} onSignIn={signIn} onBack={() => setPage('menu')} onSwitchRole={(role) => setPage(role === 'admin' ? 'staff-login' : 'student-login')} onCreateAccount={() => setAuthOpen(true)} />}
     </main>
     <footer className="footer"><span className="footer-brand">campus<span>bite</span></span><span>Made for the campus rush. <i>With love & a little extra chutney.</i></span><span>© 2026 CampusBite <span className="footer-dot">●</span> Fresh from the canteen</span></footer>
     {selectedItem && <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAdd={addToCart} />}{authOpen && <AuthModal onClose={() => setAuthOpen(false)} onSignIn={signIn} />}{checkoutOpen && <CheckoutModal slots={slots} total={total} onClose={() => setCheckoutOpen(false)} onConfirm={placeOrder} onSignIn={() => { setCheckoutOpen(false); setAuthOpen(true) }} user={user} />}{toast && <div className="toast"><span><Check size={16} /></span>{toast}</div>}
@@ -139,6 +140,21 @@ function AdminOrderRow({ order, items, compact, onStatus }: { order: Order; item
   const next: Partial<Record<OrderStatus, OrderStatus>> = { Received: 'Accepted', Accepted: 'Preparing', Preparing: 'Ready', Ready: 'Completed' }
   const labels: Partial<Record<OrderStatus, string>> = { Received: 'Accept order', Accepted: 'Start prep', Preparing: 'Mark ready', Ready: 'Complete' }
   return <div className={compact ? 'admin-order-row compact' : 'admin-order-row'}><div className="admin-order-id"><span className="line-category">{order.id}</span><b>{order.student}</b><small>{order.studentId}</small></div><div className="admin-order-items"><b>{order.lines.map((line) => `${line.quantity}× ${items.find((item) => item.id === line.itemId)?.name ?? 'Menu item'}`).join(', ')}</b><small><Clock3 size={12} /> Pickup {order.slot}</small></div><span className={`status-pill status-${order.status.toLowerCase()}`}><i />{order.status}</span><b className="admin-order-total">{money(order.total)}</b>{order.status === 'Received' ? <span className="admin-initial-actions"><button className="button button-dark admin-action" onClick={() => onStatus(order.id, 'Accepted')}>Accept <ArrowRight size={14} /></button><button className="reject-button" onClick={() => onStatus(order.id, 'Rejected')}>Reject</button></span> : next[order.status] ? <button className="button button-dark admin-action" onClick={() => onStatus(order.id, next[order.status]!)}>{labels[order.status]} <ArrowRight size={14} /></button> : <span className="admin-order-done">{order.status === 'Cancelled' ? 'Cancelled by student' : order.status === 'Rejected' ? 'Rejected' : 'Done'}</span>}</div>
+}
+
+function LoginPage({ role, onSignIn, onBack, onSwitchRole, onCreateAccount }: { role: 'student' | 'admin'; onSignIn: (role: 'student' | 'admin', name: string, collegeId: string) => void; onBack: () => void; onSwitchRole: (role: 'student' | 'admin') => void; onCreateAccount: () => void }) {
+  const [name, setName] = useState('')
+  const [identifier, setIdentifier] = useState('')
+  const staffLogin = role === 'admin'
+  return <section className={`login-page ${staffLogin ? 'staff-login-page' : 'student-login-page'}`}>
+    <div className="login-visual"><img src={staffLogin ? 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1200&q=85' : 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=85'} alt={staffLogin ? 'A canteen kitchen ready for service' : 'Freshly prepared food from the campus canteen'} /><div className="login-visual-copy"><span className="login-overline">CAMPUSBITE · {staffLogin ? 'CANTEEN OPS' : 'CAMPUS DINING'}</span><h1>{staffLogin ? <>A smoother<br />service starts here.</> : <>Lunch, on your<br />own timetable.</>}</h1><p>{staffLogin ? 'Pick up the shift, keep the kitchen moving.' : 'Your canteen favourites, ready when your break is.'}</p></div><span className="login-image-caption">{staffLogin ? 'YOUR COUNTER, YOUR CREW' : 'GOOD FOOD, RIGHT ON SCHEDULE'}</span></div>
+    <div className="login-form-wrap"><button className="back-link login-back" onClick={onBack}><ArrowLeft size={15} /> Back to menu</button><div className="login-form-content"><span className="auth-mark"><UtensilsCrossed size={20} /></span><div className="eyebrow muted-eyebrow">{staffLogin ? 'STAFF WORKSPACE' : 'WELCOME TO THE TABLE'}</div><h2>{staffLogin ? 'Canteen staff sign in' : 'Student sign in'}</h2><p className="login-description">{staffLogin ? 'Sign in to manage orders and today’s menu.' : 'Sign in to track your orders and make checkout quicker.'}</p><form onSubmit={(event) => { event.preventDefault(); onSignIn(role, name, identifier) }}>
+      <label className="form-label">{staffLogin ? 'Staff name' : 'Your name'}<input required autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={staffLogin ? 'Canteen manager' : 'Your full name'} /></label>
+      <label className="form-label">{staffLogin ? 'Staff ID' : 'College ID or email'}<input required autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder={staffLogin ? 'STAFF-01' : 'e.g. 22CS014'} /></label>
+      <label className="form-label">Password<input required type="password" autoComplete="current-password" placeholder="Enter your password" minLength={8} /></label>
+      <button className="button button-dark auth-submit" type="submit">Sign in <ArrowRight size={16} /></button>
+    </form>{!staffLogin && <p className="auth-switch">New around here? <button onClick={onCreateAccount}>Create a student account</button></p>}<p className="login-role-switch">{staffLogin ? 'Ordering lunch today?' : 'Part of the canteen team?'} <button onClick={() => onSwitchRole(staffLogin ? 'student' : 'admin')}>{staffLogin ? 'Student sign in' : 'Staff sign in'}</button></p><p className="demo-hint">Demo mode: any ID and password work locally. Passwords are never stored.</p></div></div>
+  </section>
 }
 
 function ItemModal({ item, onClose, onAdd }: { item: FoodItem; onClose: () => void; onAdd: (item: FoodItem, quantity: number, extras: string[]) => void }) {
