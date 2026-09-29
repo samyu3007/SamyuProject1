@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownUp, ArrowLeft, ArrowRight, BadgeCheck, Bell, Check, ChevronDown, Clock3, CreditCard, Flame, Leaf, LogIn, Minus, Plus, Search, ShoppingBag, ShoppingCart, SlidersHorizontal, Sparkles, Star, Trash2, UtensilsCrossed, X } from 'lucide-react'
-import { biryaniImage, buttermilkImage, gulabJamunImage, initialItems, initialOrders, limeCoolerImage, pickupSlots, type FoodItem, type Order, type OrderStatus, type User } from './data'
+import { ArrowDownUp, ArrowLeft, ArrowRight, BadgeCheck, Bell, Check, Clock3, CreditCard, Flame, Leaf, LogIn, LogOut, Minus, Plus, Search, ShoppingBag, ShoppingCart, SlidersHorizontal, Sparkles, Star, Trash2, UtensilsCrossed, X } from 'lucide-react'
+import { initialItems, initialOrders, pickupSlots, type FoodItem, type Order, type OrderStatus, type User } from './data'
 import { demoAuthAdapter } from './services/auth'
 import './App.css'
 import './campusbite.css'
 
-type Page = 'menu' | 'cart' | 'orders' | 'admin' | 'offers' | 'about' | 'student-login' | 'staff-login'
+type Page = 'menu' | 'cart' | 'orders' | 'admin' | 'offers' | 'about' | 'login' | 'student-login' | 'staff-login'
 type CartLine = { itemId: string; quantity: number; extras: string[] }
 const money = (amount: number) => `₹${amount.toFixed(0)}`
 const imageFallback = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=85'
@@ -22,7 +22,7 @@ export default function CampusBite() {
   const [slots, setSlots] = useStoredState<typeof pickupSlots>('campusbite-slots', pickupSlots)
   const [cart, setCart] = useStoredState<CartLine[]>('campusbite-cart', [])
   const [user, setUser] = useStoredState<User | null>('campusbite-user', null)
-  const [page, setPage] = useState<Page>('student-login')
+  const [page, setPage] = useState<Page>(() => user ? (user.role === 'admin' ? 'admin' : 'menu') : 'login')
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState('Popular')
@@ -41,8 +41,9 @@ export default function CampusBite() {
       const existingIds = new Set(current.map((item) => item.id))
       const merged = [...current, ...initialItems.filter((item) => !existingIds.has(item.id))]
       return merged.map((item) => {
-        const image = item.id === 'biryani' ? biryaniImage : item.id === 'lemonade' ? limeCoolerImage : item.id === 'buttermilk' ? buttermilkImage : item.id === 'gulab-jamun' ? gulabJamunImage : item.image
-        return image === item.image ? item : { ...item, image }
+        const seed = initialItems.find((entry) => entry.id === item.id)
+        if (!seed) return item
+        return { ...item, name: seed.name, description: seed.description, vegetarian: seed.vegetarian, image: seed.image }
       })
     })
   }, [setItems])
@@ -74,13 +75,16 @@ export default function CampusBite() {
       setUser(session); setAuthOpen(false); setPage(role === 'admin' ? 'admin' : 'menu'); notify(`Welcome ${session.name}`)
     })
   }
+  const signOut = () => { setUser(null); setPage('login'); setMobileNav(false) }
 
   return <div className="app-shell">
     <header className="topbar">
-      <button className="brand" onClick={() => setPage('menu')} aria-label="CampusBite home"><span className="brand-mark"><UtensilsCrossed size={20} /></span><span>campus<span className="brand-accent">bite</span><small>THE CAMPUS CANTEEN</small></span></button>
-      <button className="mobile-menu" onClick={() => setMobileNav(!mobileNav)} aria-label="Toggle navigation">{mobileNav ? <X /> : <SlidersHorizontal />}</button>
-      <nav className={mobileNav ? 'nav-links nav-open' : 'nav-links'} aria-label="Main navigation"><button className={page === 'menu' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('menu'); setMobileNav(false) }}>Menu</button><button className={page === 'orders' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('orders'); setMobileNav(false) }}>My orders</button><button className={page === 'offers' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('offers'); setMobileNav(false) }}>Offers <span className="offer-dot" /></button><button className={page === 'about' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('about'); setMobileNav(false) }}>About</button>{user?.role === 'admin' ? <button className={page === 'admin' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('admin'); setMobileNav(false) }}>Staff workspace</button> : <button className={page === 'staff-login' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('staff-login'); setMobileNav(false) }}>Staff sign in</button>}</nav>
-      <div className="top-actions"><button className="icon-button notification-button" title="Notifications" onClick={() => notify('You are all caught up')}><Bell size={19} /><i /></button><button className="profile-button" onClick={() => user?.role === 'admin' ? setPage('admin') : setPage('student-login')}><span className="avatar">{user ? user.name.charAt(0) : 'S'}</span><span className="profile-label">{user?.name.split(' ')[0] ?? 'Student sign in'}</span><ChevronDown size={15} /></button><button className="cart-button" title="Open cart" onClick={() => setPage('cart')}><ShoppingCart size={19} /><span>Bag</span><b>{cartCount}</b></button></div>
+      <button className="brand" onClick={() => setPage(!user ? 'login' : user.role === 'admin' ? 'admin' : 'menu')} aria-label="CampusBite home"><span className="brand-mark"><UtensilsCrossed size={20} /></span><span>campus<span className="brand-accent">bite</span><small>THE CAMPUS CANTEEN</small></span></button>
+      {user?.role === 'student' && <button className="mobile-menu" onClick={() => setMobileNav(!mobileNav)} aria-label="Toggle navigation">{mobileNav ? <X /> : <SlidersHorizontal />}</button>}
+      {user?.role === 'student' && <nav className={mobileNav ? 'nav-links nav-open' : 'nav-links'} aria-label="Student navigation"><button className={page === 'menu' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('menu'); setMobileNav(false) }}>Menu</button><button className={page === 'orders' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('orders'); setMobileNav(false) }}>My orders</button><button className={page === 'offers' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('offers'); setMobileNav(false) }}>Offers <span className="offer-dot" /></button><button className={page === 'about' ? 'nav-link active' : 'nav-link'} onClick={() => { setPage('about'); setMobileNav(false) }}>About</button></nav>}
+      {user?.role === 'admin' && <span className="staff-header-label"><span className="live-dot" /> STAFF WORKSPACE</span>}
+      {user?.role === 'student' && <div className="top-actions"><button className="icon-button notification-button" title="Notifications" onClick={() => notify('You are all caught up')}><Bell size={19} /><i /></button><span className="signed-in-name"><span className="avatar">{user.name.charAt(0)}</span>{user.name.split(' ')[0]}</span><button className="sign-out-button" aria-label="Sign out" onClick={signOut}><LogOut size={16} /><span>Sign out</span></button><button className="cart-button" title="Open cart" onClick={() => setPage('cart')}><ShoppingCart size={19} /><span>Bag</span><b>{cartCount}</b></button></div>}
+      {user?.role === 'admin' && <div className="top-actions staff-top-actions"><span className="signed-in-name">{user.name}</span><button className="sign-out-button" aria-label="Sign out" onClick={signOut}><LogOut size={16} /><span>Sign out</span></button></div>}
     </header>
     <main>
       {page === 'menu' && <>
@@ -95,6 +99,7 @@ export default function CampusBite() {
       {page === 'admin' && <AdminPage items={items} orders={orders} slots={slots} setSlots={setSlots} setItems={setItems} setOrders={setOrders} notify={notify} />}
       {page === 'offers' && <OffersPage onMenu={() => { setPage('menu'); setMaxPrice(250) }} />}
       {page === 'about' && <AboutPage onMenu={() => setPage('menu')} />}
+      {page === 'login' && <LoginLanding onSignIn={signIn} onCreateAccount={() => setAuthOpen(true)} />}
       {(page === 'student-login' || page === 'staff-login') && <LoginPage role={page === 'staff-login' ? 'admin' : 'student'} onSignIn={signIn} onBack={() => setPage('menu')} onSwitchRole={(role) => setPage(role === 'admin' ? 'staff-login' : 'student-login')} onCreateAccount={() => setAuthOpen(true)} />}
     </main>
     <footer className="footer"><span className="footer-brand">campus<span>bite</span></span><span>Made for the campus rush. <i>With love & a little extra chutney.</i></span><span>© 2026 CampusBite <span className="footer-dot">●</span> Fresh from the canteen</span></footer>
@@ -140,6 +145,18 @@ function AdminOrderRow({ order, items, compact, onStatus }: { order: Order; item
   const next: Partial<Record<OrderStatus, OrderStatus>> = { Received: 'Accepted', Accepted: 'Preparing', Preparing: 'Ready', Ready: 'Completed' }
   const labels: Partial<Record<OrderStatus, string>> = { Received: 'Accept order', Accepted: 'Start prep', Preparing: 'Mark ready', Ready: 'Complete' }
   return <div className={compact ? 'admin-order-row compact' : 'admin-order-row'}><div className="admin-order-id"><span className="line-category">{order.id}</span><b>{order.student}</b><small>{order.studentId}</small></div><div className="admin-order-items"><b>{order.lines.map((line) => `${line.quantity}× ${items.find((item) => item.id === line.itemId)?.name ?? 'Menu item'}`).join(', ')}</b><small><Clock3 size={12} /> Pickup {order.slot}</small></div><span className={`status-pill status-${order.status.toLowerCase()}`}><i />{order.status}</span><b className="admin-order-total">{money(order.total)}</b>{order.status === 'Received' ? <span className="admin-initial-actions"><button className="button button-dark admin-action" onClick={() => onStatus(order.id, 'Accepted')}>Accept <ArrowRight size={14} /></button><button className="reject-button" onClick={() => onStatus(order.id, 'Rejected')}>Reject</button></span> : next[order.status] ? <button className="button button-dark admin-action" onClick={() => onStatus(order.id, next[order.status]!)}>{labels[order.status]} <ArrowRight size={14} /></button> : <span className="admin-order-done">{order.status === 'Cancelled' ? 'Cancelled by student' : order.status === 'Rejected' ? 'Rejected' : 'Done'}</span>}</div>
+}
+
+function LoginLanding({ onSignIn, onCreateAccount }: { onSignIn: (role: 'student' | 'admin', name: string, collegeId: string) => void; onCreateAccount: () => void }) {
+  const [role, setRole] = useState<'student' | 'admin'>('student')
+  return <section className="login-landing"><div className="login-landing-visual"><img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=85" alt="Fresh food served at the campus canteen" /><div className="login-landing-copy"><span>CAMPUSBITE · THE CAMPUS CANTEEN</span><h1>Good food,<br /><em>your way.</em></h1><p>Order ahead. Pick up when it suits you.</p></div><small>FRESH FROM THE CANTEEN</small></div><div className="login-landing-content"><div className="login-landing-heading"><div className="eyebrow muted-eyebrow">WELCOME TO THE TABLE</div><h2>Sign in to continue</h2></div><div className="login-role-tabs" role="group" aria-label="Choose sign-in type"><button type="button" className={role === 'student' ? 'selected' : ''} aria-pressed={role === 'student'} onClick={() => setRole('student')}>Student</button><button type="button" className={role === 'admin' ? 'selected' : ''} aria-pressed={role === 'admin'} onClick={() => setRole('admin')}>Canteen staff</button></div><div className="login-options"><LoginOptionForm role={role} onSignIn={onSignIn} onCreateAccount={role === 'student' ? onCreateAccount : undefined} /></div></div></section>
+}
+
+function LoginOptionForm({ role, onSignIn, onCreateAccount }: { role: 'student' | 'admin'; onSignIn: (role: 'student' | 'admin', name: string, collegeId: string) => void; onCreateAccount?: () => void }) {
+  const [name, setName] = useState('')
+  const [identifier, setIdentifier] = useState('')
+  const staffLogin = role === 'admin'
+  return <section className={`login-option ${staffLogin ? 'staff-option' : 'student-option'}`}><div className="login-option-heading"><span className="login-option-icon"><UtensilsCrossed size={16} /></span><div><span className="line-category">{staffLogin ? 'CANTEEN TEAM' : 'CAMPUS DINING'}</span><h3>{staffLogin ? 'Staff login' : 'Student login'}</h3></div></div><form onSubmit={(event) => { event.preventDefault(); onSignIn(role, name, identifier) }}><label className="form-label">{staffLogin ? 'Staff name' : 'Your name'}<input required autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={staffLogin ? 'Canteen manager' : 'Your full name'} /></label><label className="form-label">{staffLogin ? 'Staff ID' : 'College ID or email'}<input required autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder={staffLogin ? 'STAFF-01' : 'e.g. 22CS014'} /></label><label className="form-label">Password<input required type="password" autoComplete="current-password" placeholder="Enter your password" minLength={8} /></label><button className="button button-dark auth-submit" type="submit">Sign in <ArrowRight size={16} /></button></form>{onCreateAccount && <p className="login-option-create">New student? <button onClick={onCreateAccount}>Create an account</button></p>}</section>
 }
 
 function LoginPage({ role, onSignIn, onBack, onSwitchRole, onCreateAccount }: { role: 'student' | 'admin'; onSignIn: (role: 'student' | 'admin', name: string, collegeId: string) => void; onBack: () => void; onSwitchRole: (role: 'student' | 'admin') => void; onCreateAccount: () => void }) {
